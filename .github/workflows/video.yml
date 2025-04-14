@@ -12,6 +12,8 @@ jobs:
           sudo apt install -y ffmpeg
           pip install --user -r requirements.txt
       - name: Generar video
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python generar_video.py
       - name: Subir artefacto
         uses: actions/upload-artifact@v4
