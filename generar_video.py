@@ -1,7 +1,7 @@
 import os
 import subprocess
 import requests
-from transformers import pipeline
+import json
 from TTS.api import TTS
 import speech_recognition as sr
 import pysrt
@@ -9,13 +9,22 @@ import pysrt
 # Crear directorio temporal
 os.makedirs("media", exist_ok=True)
 
-# Paso 1: Generar guión
-def generar_guion(tema="curiosidades naturaleza"):
+# Paso 1: Generar guión con Hugging Face Inference API
+def generar_guion(tema="curiosidades naturaleza", hf_token=os.getenv("HF_TOKEN")):
     try:
-        generator = pipeline("text-generation", model="mistralai/Mixtral-8x7B-Instruct-v0.1")
+        url = "https://api-inference.huggingface.co/models/mixtralai/Mixtral-8x7B-Instruct-v0.1"
+        headers = {"Authorization": f"Bearer {hf_token}"}
         prompt = f"Escribe un guión breve de 150 palabras en español sobre {tema} para un video de 1 minuto."
-        guion = generator(prompt, max_length=200, num_return_sequences=1)[0]["generated_text"]
-        return guion.strip()
+        payload = {
+            "inputs": prompt,
+            "parameters": {"max_length": 200, "num_return_sequences": 1}
+        }
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        if response.status_code == 200:
+            guion = response.json()[0]["generated_text"].strip()
+            return guion
+        else:
+            raise Exception(f"API error: {response.text}")
     except Exception as e:
         print(f"Error en guión: {e}")
         return "Este es un video sobre la naturaleza. Los bosques son hogar de miles de especies. Los ríos fluyen con vida. Cada día, la naturaleza nos enseña algo nuevo."
@@ -74,7 +83,7 @@ def crear_video(imagenes, voz, musica, salida="media/output.mp4"):
     duracion_por_imagen = 20  # 20 segundos por imagen
     filter_complex = ""
     for i, img in enumerate(imagenes):
-        filter_complex += f"[{i}:v]trim=duration={duracion_por_imagen},setpts=PTSPPP-STARTPTS[v{i}];"
+        filter_complex += f"[{i}:v]trim=duration={duracion_por_imagen},setpts=PTS-STARTPTS[v{i}];"
     filter_complex += "".join([f"[v{i}]" for i in range(len(imagenes))]) + f"concat=n={len(imagenes)}:v=1:a=0[v];[1:a][2:a]amix=inputs=2:duration=longest[a]"
     
     comando = [
