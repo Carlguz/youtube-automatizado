@@ -13,7 +13,7 @@ os.makedirs("media", exist_ok=True)
 def generar_guion(tema="curiosidades naturaleza"):
     try:
         generator = pipeline("text-generation", model="mistralai/Mixtral-8x7B-Instruct-v0.1")
-        prompt = f"Escribe un guión breve de 150 palabras sobre {tema} para un video de 1 minuto."
+        prompt = f"Escribe un guión breve de 150 palabras en español sobre {tema} para un video de 1 minuto."
         guion = generator(prompt, max_length=200, num_return_sequences=1)[0]["generated_text"]
         return guion.strip()
     except Exception as e:
@@ -55,8 +55,8 @@ def descargar_imagenes(tema="nature", cantidad=3):
 
 # Paso 4: Obtener música
 def obtener_musica():
-    # URL pública de música libre (Pixabay)
-    url = "https://cdn.pixabay.com/audio/2023/01/23/audio_0e3e4f7e65.mp3"  # Pista instrumental corta
+    # URL pública de música libre (Pixabay, instrumental corta)
+    url = "https://cdn.pixabay.com/audio/2023/01/23/audio_0e3e4f7e65.mp3"
     archivo = "media/musica.mp3"
     try:
         respuesta = requests.get(url, stream=True, timeout=10)
@@ -74,7 +74,7 @@ def crear_video(imagenes, voz, musica, salida="media/output.mp4"):
     duracion_por_imagen = 20  # 20 segundos por imagen
     filter_complex = ""
     for i, img in enumerate(imagenes):
-        filter_complex += f"[{i}:v]trim=duration={duracion_por_imagen},setpts=PTS-STARTPTS[v{i}];"
+        filter_complex += f"[{i}:v]trim=duration={duracion_por_imagen},setpts=PTSPPP-STARTPTS[v{i}];"
     filter_complex += "".join([f"[v{i}]" for i in range(len(imagenes))]) + f"concat=n={len(imagenes)}:v=1:a=0[v];[1:a][2:a]amix=inputs=2:duration=longest[a]"
     
     comando = [
@@ -109,7 +109,7 @@ def generar_subtitulos(audio, salida="media/subtitulos.srt"):
                 end=pysrt.SubRipTime(seconds=end),
                 text=" ".join(palabras[i:i+5])
             ))
-        pysrt.SubRiphavFile(subtitulos).save(salida)
+        pysrt.SubRipFile(subtitulos).save(salida)
         return salida
     except Exception as e:
         print(f"Error en subtítulos: {e}")
