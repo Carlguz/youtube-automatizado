@@ -5,18 +5,16 @@ from transformers import pipeline
 from TTS.api import TTS
 import speech_recognition as sr
 import pysrt
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
 
-# Crear directorios
+# Crear directorio temporal
 os.makedirs("media", exist_ok=True)
 
 # Paso 1: Generar guión
 def generar_guion(tema="curiosidades naturaleza"):
     generator = pipeline("text-generation", model="mistralai/Mixtral-8x7B-Instruct-v0.1")
-    prompt = f"Escribe un guión de 3000 palabras sobre {tema}, dividido en 10 secciones de 2 minutos."
-    guion = generator(prompt, max_length=3500, num_return_sequences=1)[0]["generated_text"]
-    return guion
+    prompt = f"Escribe un guión breve de 150 palabras sobre {tema} para un video de 1 minuto."
+    guion = generator(prompt, max_length=200, num_return_sequences=1)[0]["generated_text"]
+    return guion.strip()
 
 # Paso 2: Crear voz en off
 def texto_a_voz(guion, archivo_salida="media/voz.wav"):
@@ -24,30 +22,46 @@ def texto_a_voz(guion, archivo_salida="media/voz.wav"):
     tts.tts_to_file(text=guion, file_path=archivo_salida)
     return archivo_salida
 
-# Paso 3: Descargar imágenes
-def descargar_imagenes(tema, cantidad=10, api_key="TU_CLAVE_PEXELS"):
-    url = "https://api.pexels.com/v1/search"
-    headers = {"Authorization": api_key}
-    params = {"query": tema, "per_page": cantidad}
-    respuesta = requests.get(url, headers=headers, params=params)
-    imagenes = respuesta.json()["photos"]
-    for i, img in enumerate(imagenes):
-        img_url = img["src"]["medium"]
-        with open(f"media/imagen_{i}.jpg", "wb") as f:
-            f.write(requests.get(img_url).content)
-    return [f"media/imagen_{i}.jpg" for i in range(len(imagenes))]
+# Paso 3: Descargar imágenes (Unsplash Source, sin API)
+def descargar_imagenes(tema="nature", cantidad=3):
+    imagenes = []
+    for i in range(cantidad):
+        url = f"https://source.unsplash.com/1920x1080/?{tema}&sig={i}"
+        archivo = f"media/imagen_{i}.jpg"
+        try:
+            respuesta = requests.get(url, stream=True, timeout=10)
+            if respuesta.status_code == 200:
+                with open(archivo, "wb") as f:
+                    f.write(respuesta.content)
+                imagenes.append(archivo)
+            else:
+                raise Exception("Error al descargar")
+        except Exception as e:
+            print(f"Error en imagen {i}: {e}")
+            # Fallback: Imagen negra
+            subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=black:s=1920x1080:d=20", "-c:v", "libx264", archivo])
+            imagenes.append(archivo)
+    return imagenes
 
-# Paso 4: Descargar música
-def descargar_musica():
-    # Usa una URL fija de Pixabay o almacena música en el repositorio
-    url = "URL_MUSICA_LIBRE"  # Reemplaza con una URL válida
-    with open("media/musica.mp3", "wb") as f:
-        f.write(requests.get(url).content)
-    return "media/musica.mp3"
+# Paso 4: Obtener música
+def obtener_musica():
+    # URL pública de música libre (Pixabay, reemplaza con una válida)
+    url = "https://cdn.pixabay.com/audio/2022/03/15/audio_1a2b3c4d5e.mp3"  # Cambia por una pista real
+    archivo = "media/musica.mp3"
+    try:
+        respuesta = requests.get(url, stream=True, timeout=10)
+        if respuesta.status_code == 200:
+            with open(archivo, "wb") as f:
+                f.write(respuesta.content)
+            return archivo
+    except Exception:
+        # Fallback: Silencio
+        subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-t", "60", archivo])
+        return archivo
 
 # Paso 5: Crear video
 def crear_video(imagenes, voz, musica, salida="media/output.mp4"):
-    duracion_por_imagen = 120  # 120 segundos por imagen
+    duracion_por_imagen = 20  # 20 segundos por imagen (1 min / 3)
     filter_complex = ""
     for i, img in enumerate(imagenes):
         filter_complex += f"[{i}:v]trim=duration={duracion_por_imagen},setpts=PTS-STARTPTS[v{i}];"
@@ -59,7 +73,7 @@ def crear_video(imagenes, voz, musica, salida="media/output.mp4"):
         "-i", voz, "-i", musica,
         "-filter_complex", filter_complex,
         "-map", "[v]", "-map", "[a]",
-        "-c:v", "libx264", "-c:a", " sociocultural",
+        "-c:v", "libx264", "-c:a", "aac",
         "-shortest", salida
     ]
     subprocess.run(comando, check=True)
@@ -70,19 +84,19 @@ def generar_subtitulos(audio, salida="media/subtitulos.srt"):
     recognizer = sr.Recognizer()
     with sr.AudioFile(audio) as source:
         audio_data = recognizer.record(source)
-        texto = recognizer.recognize_whisper(audio_data, model="base")
+        texto = recognizer.recognize_whisper(audio_data, model="tiny")
     
-    # Dividir texto en subtítulos (simplificado)
+    # Subtítulos simplificados
     palabras = texto.split()
     subtitulos = []
-    for i in range(0, len(palabras), 10):
-        start = i * 2
-        end = (i + 10) * 2
+    for i in range(0, len(palabras), 5):
+        start = i * 0.5
+        end = min((i + 5) * 0.5, 60)
         subtitulos.append(pysrt.SubRipItem(
             index=len(subtitulos) + 1,
             start=pysrt.SubRipTime(seconds=start),
             end=pysrt.SubRipTime(seconds=end),
-            text=" ".join(palabras[i:i+10])
+            text=" ".join(palabras[i:i+5])
         ))
     pysrt.SubRipFile(subtitulos).save(salida)
     return salida
@@ -94,34 +108,17 @@ def agregar_subtitulos(video, subtitulos, salida="media/video_final.mp4"):
     ])
     return salida
 
-# Paso 8: Subir a YouTube
-def subir_video(titulo, descripcion, archivo, api_key):
-    youtube = build("youtube", "v3", developerKey=api_key)
-    request = youtube.videos().insert(
-        part="snippet,status",
-        body={
-            "snippet": {"title": titulo, "description": descripcion, "categoryId": "27"},
-            "status": {"privacyStatus": "public"}
-        },
-        media_body=MediaFileUpload(archivo)
-    )
-    request.execute()
-
-# Ejecutar flujo
+# Flujo principal
 def main():
-    tema = "curiosidades naturaleza"
-    api_pexels = os.getenv("PEXELS_API_KEY")
-    api_youtube = os.getenv("YOUTUBE_API_KEY")
-    
+    tema = "nature"
     guion = generar_guion(tema)
     voz = texto_a_voz(guion)
-    imagenes = descargar_imagenes(tema, api_key=api_pexels)
-    musica = descargar_musica()
+    imagenes = descargar_imagenes(tema)
+    musica = obtener_musica()
     video = crear_video(imagenes, voz, musica)
     subtitulos = generar_subtitulos(voz)
     video_final = agregar_subtitulos(video, subtitulos)
-    subir_video(f"Curiosidades de la Naturaleza #{os.getenv('GITHUB_RUN_NUMBER', 1)}",
-                "Video diario automatizado", video_final, api_youtube)
+    print(f"Video generado: {video_final}")
 
 if __name__ == "__main__":
     main()
