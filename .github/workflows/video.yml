@@ -1,6 +1,6 @@
 name: Generar Video de Prueba
 on:
-  workflow_dispatch:  # Ejecución manual para prueba
+  workflow_dispatch:  # Ejecución manual
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,9 +14,10 @@ jobs:
       - name: Generar video
         run: python generar_video.py
       - name: Subir artefacto
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # Actualizado a v4
         with:
           name: video-prueba
           path: media/video_final.mp4
+          retention-days: 7  # Guardar 7 días
       - name: Limpiar
         run: rm -rf media/*
