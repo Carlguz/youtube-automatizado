@@ -10,7 +10,7 @@ import pysrt
 os.makedirs("media", exist_ok=True)
 
 # Paso 1: Generar guión con Hugging Face Inference API
-def generar_guion(tema="curiosidades naturaleza", hf_token=os.getenv("HF_TOKEN")):
+def generar_guion(tema="curiosidades naturaleza", hf_token=os.getenv("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")):
     try:
         url = "https://api-inference.huggingface.co/models/mixtralai/Mixtral-8x7B-Instruct-v0.1"
         headers = {"Authorization": f"Bearer {hf_token}"}
