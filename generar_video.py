@@ -10,9 +10,9 @@ import pysrt
 os.makedirs("media", exist_ok=True)
 
 # Paso 1: Generar guión con Hugging Face Inference API
-def generar_guion(tema="curiosidades naturaleza", hf_token=os.getenv("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")):
+def generar_guion(tema="curiosidades naturaleza", hf_token=os.getenv("HF_TOKEN")):
     try:
-        url = "https://api-inference.huggingface.co/models/mixtralai/Mixtral-8x7B-Instruct-v0.1"
+        url = "https://api-inference.huggingface.co/models/mistralai/Mixtral-8x7B-Instruct-v0.1"
         headers = {"Authorization": f"Bearer {hf_token}"}
         prompt = f"Escribe un guión breve de 150 palabras en español sobre {tema} para un video de 1 minuto."
         payload = {
