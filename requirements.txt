@@ -1,5 +1,6 @@
-requests==2.31.0
-TTS==0.22.0
-speechrecognition==3.10.0
-pysrt==1.1.2
-pydub==0.25.1
+openai
+Pillow
+moviepy
+gTTS
+whisper
+requests
