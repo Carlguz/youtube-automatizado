@@ -4,3 +4,4 @@ moviepy
 gTTS
 whisper
 requests
+
