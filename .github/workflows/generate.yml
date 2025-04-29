@@ -1,0 +1,26 @@
+name: Generar Video
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # Una vez al día
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Instalar dependencias
+      run: |
+        sudo apt update
+        sudo apt install -y ffmpeg
+        pip install -r requirements.txt
+
+    - name: Ejecutar scripts
+      run: |
+        python scripts/generate_script.py
+        python scripts/text_to_speech.py
+        python scripts/generate_images.py
+        python scripts/subtitles.py
+        python scripts/render_video.py
