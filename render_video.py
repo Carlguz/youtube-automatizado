@@ -1,18 +1,17 @@
-import os
 from moviepy.editor import *
 
-# Imágenes de fondo
-image = ImageClip("assets/images/bg.jpg", duration=30)
+# Cargar imagen de fondo
+img = ImageClip("assets/images/bg.jpg", duration=10)
 
-# Audio generado
+# Cargar audio principal
 audio = AudioFileClip("output/audio.mp3")
 
-# Música de fondo
-music = AudioFileClip("assets/music/music.mp3").volumex(0.2)
+# Música de fondo opcional
+music = AudioFileClip("assets/music/music.mp3").volumex(0.1)
 
-# Combinar audios
+# Mezclar música de fondo con voz en off
 final_audio = CompositeAudioClip([audio, music])
 
-# Crear video final
-video = image.set_audio(final_audio)
+# Montar video
+video = img.set_audio(final_audio)
 video.write_videofile("output/final_video.mp4", fps=24)
